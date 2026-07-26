@@ -72,9 +72,25 @@ export function useOrders() {
     const orderNumber = `ORD-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
     const { items, ...orderData } = order;
 
+    // Calculate total_amount from items if not provided
+    let totalAmount = orderData.total_amount || 0;
+    if (items && items.length > 0) {
+      totalAmount = items.reduce((sum: number, item: CreateOrderItem) => {
+        const unitPrice = Number(item.unit_price) || 0;
+        const qty = Number(item.quantity) || 0;
+        const discount = Number(item.discount) || 0;
+        const itemTotal = (unitPrice * qty) - discount;
+        return sum + itemTotal;
+      }, 0);
+      // Subtract order discount if provided
+      if (orderData.discount && orderData.discount > 0) {
+        totalAmount -= Number(orderData.discount);
+      }
+    }
+
     const { data: newOrder, error: err } = await supabase
       .from("orders")
-      .insert({ ...orderData, order_number: orderNumber })
+      .insert({ ...orderData, order_number: orderNumber, total_amount: totalAmount })
       .select()
       .single();
     if (err) throw new Error(err.message);
