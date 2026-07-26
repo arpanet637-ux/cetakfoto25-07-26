@@ -89,6 +89,12 @@ export function usePaymentGateway() {
   };
 
   const updateSettings = async (updates: any): Promise<void> => {
+    // Credentials can only be written by someone who knows the PIN.
+    if (settings?.has_pin) {
+      if (!updates.pin) throw new Error("PIN wajib diisi untuk menyimpan kredensial.");
+      await verifyPin(updates.pin);
+    }
+
     if (settings) {
       const { error: err } = await supabase
         .from("payment_gateway_settings")
@@ -117,5 +123,15 @@ export function usePaymentGateway() {
     if (user) fetchSettings();
   }, [fetchSettings, user]);
 
-  return { settings, loading, error, fetchSettings, updateSettings };
+  return {
+    settings,
+    // `info` is the name the settings page uses for the non-secret summary.
+    info: settings,
+    loading,
+    error,
+    fetchSettings,
+    setPin,
+    verifyPin,
+    updateSettings,
+  };
 }

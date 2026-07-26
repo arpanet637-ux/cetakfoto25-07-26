@@ -496,7 +496,12 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 class LocalBucket {
-  async upload(path: string, body: Blob | File): Promise<{ data: { path: string } | null; error: QueryError | null }> {
+  async upload(
+    path: string,
+    body: Blob | File,
+    // Accepted for API parity with the old remote client; irrelevant locally.
+    _options?: { contentType?: string; upsert?: boolean; cacheControl?: string }
+  ): Promise<{ data: { path: string } | null; error: QueryError | null }> {
     try {
       const dataUrl = await blobToDataUrl(body);
       const files = readFiles();

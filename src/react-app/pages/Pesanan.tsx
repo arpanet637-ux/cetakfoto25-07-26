@@ -32,6 +32,31 @@ export default function PesananPage() {
   const [safeCollapsed, setSafeCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // OrderCard expects void-returning handlers, so drop the hook's return values.
+  const handleUpdateOrder = async (id: number, data: Record<string, unknown>): Promise<void> => {
+    await updateOrder(id, data);
+  };
+  // The modal supplies only the editable fields; derive order_id and subtotal here.
+  const handleAddItem = async (
+    orderId: number,
+    item: {
+      product_id?: number;
+      product_name: string;
+      quantity: number;
+      unit_price: number;
+      discount: number;
+      method: "cetak_sendiri" | "tim_produksi";
+      deadline_date: string;
+    }
+  ): Promise<void> => {
+    await addOrderItem(orderId, {
+      ...item,
+      order_id: orderId,
+      product_id: item.product_id ?? null,
+      subtotal: item.quantity * item.unit_price - item.discount,
+    });
+  };
+
   // Check if order is urgent (H-1 or past deadline)
   const isOrderUrgent = (order: OrderWithItems): boolean => {
     const today = new Date();
@@ -309,9 +334,9 @@ export default function PesananPage() {
                       order={order}
                       products={products}
                       branches={branches}
-                      onUpdateOrder={updateOrder}
+                      onUpdateOrder={handleUpdateOrder}
                       onUpdateItem={updateOrderItem}
-                      onAddItem={addOrderItem}
+                      onAddItem={handleAddItem}
                       onDeleteItem={deleteOrderItem}
                       onDeleteOrder={deleteOrder}
                       onPaymentChanged={silentRefresh}
@@ -359,9 +384,9 @@ export default function PesananPage() {
                       order={order}
                       products={products}
                       branches={branches}
-                      onUpdateOrder={updateOrder}
+                      onUpdateOrder={handleUpdateOrder}
                       onUpdateItem={updateOrderItem}
-                      onAddItem={addOrderItem}
+                      onAddItem={handleAddItem}
                       onDeleteItem={deleteOrderItem}
                       onDeleteOrder={deleteOrder}
                       onPaymentChanged={silentRefresh}

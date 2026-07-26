@@ -17,7 +17,7 @@ export default function ExpenseFormModal({
   onSave,
 }: ExpenseFormModalProps) {
   const [formData, setFormData] = useState({
-    expense_type: "operasional",
+    expense_type: "operasional" as Expense["expense_type"],
     description: "",
     amount: "",
     expense_date: new Date().toISOString().split("T")[0],
@@ -98,8 +98,8 @@ export default function ExpenseFormModal({
                   name="expense_type"
                   value="operasional"
                   checked={formData.expense_type === "operasional"}
-                  onChange={(e) =>
-                    setFormData({ ...formData, expense_type: e.target.value })
+                  onChange={() =>
+                    setFormData({ ...formData, expense_type: "operasional" })
                   }
                   className="h-4 w-4 text-primary"
                 />
@@ -111,8 +111,8 @@ export default function ExpenseFormModal({
                   name="expense_type"
                   value="vendor"
                   checked={formData.expense_type === "vendor"}
-                  onChange={(e) =>
-                    setFormData({ ...formData, expense_type: e.target.value })
+                  onChange={() =>
+                    setFormData({ ...formData, expense_type: "vendor" })
                   }
                   className="h-4 w-4 text-primary"
                 />
