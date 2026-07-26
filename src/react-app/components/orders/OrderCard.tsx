@@ -46,12 +46,33 @@ interface OrderCardProps {
   onPaymentChanged?: () => void;
 }
 
-const formatCurrency = (amount: number) => {
+/**
+ * Parse any value to a safe number, handling null, undefined, strings, etc.
+ * Returns 0 if parsing fails or value is NaN.
+ */
+const parsePrice = (val: any): number => {
+  if (typeof val === "number" && !isNaN(val)) return val;
+  if (typeof val === "string") {
+    const cleaned = val.replace(/[^0-9]/g, "");
+    return cleaned ? parseInt(cleaned, 10) : 0;
+  }
+  return 0;
+};
+
+const formatCurrency = (amount: number | null | undefined) => {
+  const safeAmount = parsePrice(amount);
+  if (isNaN(safeAmount) || safeAmount === 0) {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(0);
+  }
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
     minimumFractionDigits: 0,
-  }).format(amount);
+  }).format(safeAmount);
 };
 
 const formatDate = (dateStr: string) => {
@@ -240,17 +261,27 @@ export default function OrderCard({ order, products, branches, onUpdateOrder, on
             {/* Payment Info */}
             <div className="px-4 py-3 bg-muted/20 flex flex-wrap items-center justify-between gap-3 border-b border-border">
               <div className="flex flex-wrap items-center gap-4 text-sm">
-                <span className="text-muted-foreground">
-                  Dibayar: <span className="font-semibold text-green-600">{formatCurrency(order.paid_amount || 0)}</span>
-                </span>
-                <span className="text-muted-foreground">
-                  Sisa: <span className="font-semibold text-foreground">{formatCurrency((order.total_amount || 0) - (order.paid_amount || 0))}</span>
-                </span>
-                {order.discount && order.discount > 0 && (
-                  <span className="text-muted-foreground">
-                    Diskon: <span className="font-semibold text-orange-600">-{formatCurrency(order.discount)}</span>
-                  </span>
-                )}
+                {(() => {
+                  const paidAmount = parsePrice(order.paid_amount);
+                  const totalAmount = parsePrice(order.total_amount);
+                  const orderDiscount = parsePrice(order.discount);
+                  const remaining = totalAmount - paidAmount;
+                  return (
+                    <>
+                      <span className="text-muted-foreground">
+                        Dibayar: <span className="font-semibold text-green-600">{formatCurrency(paidAmount)}</span>
+                      </span>
+                      <span className="text-muted-foreground">
+                        Sisa: <span className="font-semibold text-foreground">{formatCurrency(remaining)}</span>
+                      </span>
+                      {orderDiscount > 0 && (
+                        <span className="text-muted-foreground">
+                          Diskon: <span className="font-semibold text-orange-600">-{formatCurrency(orderDiscount)}</span>
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
                 {order.payment_method && (
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                     order.payment_method === "cash" 
@@ -472,13 +503,23 @@ function OrderItemRow({ item, onUpdate }: OrderItemRowProps) {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-muted-foreground">
-            <span>{item.quantity}x @ {formatCurrency(item.unit_price)}</span>
-            {item.discount > 0 && (
-              <span className="text-green-600">-{formatCurrency(item.discount)}</span>
-            )}
-            <span className="font-medium text-foreground">
-              = {formatCurrency(item.subtotal)}
-            </span>
+            {(() => {
+              const unitPrice = parsePrice(item.unit_price);
+              const qty = parsePrice(item.quantity) || 1;
+              const discount = parsePrice(item.discount);
+              const subtotal = unitPrice * qty - discount;
+              return (
+                <>
+                  <span>{qty}x @ {formatCurrency(unitPrice)}</span>
+                  {discount > 0 && (
+                    <span className="text-green-600">-{formatCurrency(discount)}</span>
+                  )}
+                  <span className="font-medium text-foreground">
+                    = {formatCurrency(subtotal)}
+                  </span>
+                </>
+              );
+            })()}
           </div>
           <div
             className={`flex items-center gap-1 mt-1.5 text-sm ${
