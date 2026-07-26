@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import { useState, useEffect, createContext, useContext } from "react";
-import { supabase } from "@/react-app/lib/supabase";
+import { supabase, initLocalAuth } from "@/react-app/lib/supabase";
 import type { User, Session } from "@/react-app/lib/local-auth";
 import HomePage from "@/react-app/pages/Home";
 import ProdukPage from "@/react-app/pages/Produk";
@@ -38,16 +38,20 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isPending, setIsPending] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Initialize auth and load current session
+    const init = async () => {
+      await initLocalAuth();
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
       setIsPending(false);
-    });
+    };
+    init();
 
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setIsPending(false);
     });
 
     return () => subscription.unsubscribe();
