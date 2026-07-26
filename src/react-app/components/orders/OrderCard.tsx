@@ -234,7 +234,9 @@ export default function OrderCard({ order, products, branches, onUpdateOrder, on
           <div className="flex items-center gap-4">
             <div className="text-right">
               <div className="text-lg font-bold text-foreground">
-                {formatCurrency(order.total_amount)}
+                {formatCurrency(
+                  (order as any).total_amount ?? (order as any).total ?? (order as any).jumlah_total ?? 0
+                )}
               </div>
               <div className="text-sm text-muted-foreground">
                 {(order.items || []).length} item
@@ -262,9 +264,16 @@ export default function OrderCard({ order, products, branches, onUpdateOrder, on
             <div className="px-4 py-3 bg-muted/20 flex flex-wrap items-center justify-between gap-3 border-b border-border">
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 {(() => {
-                  const paidAmount = parsePrice(order.paid_amount);
-                  const totalAmount = parsePrice(order.total_amount);
-                  const orderDiscount = parsePrice(order.discount);
+                  const orderAny = order as any;
+                  const paidAmount = parsePrice(
+                    orderAny.paid_amount ?? orderAny.jumlah_bayar ?? 0
+                  );
+                  const totalAmount = parsePrice(
+                    orderAny.total_amount ?? orderAny.total ?? orderAny.jumlah_total ?? 0
+                  );
+                  const orderDiscount = parsePrice(
+                    orderAny.discount ?? orderAny.diskon ?? 0
+                  );
                   const remaining = totalAmount - paidAmount;
                   return (
                     <>
@@ -504,10 +513,27 @@ function OrderItemRow({ item, onUpdate }: OrderItemRowProps) {
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-muted-foreground">
             {(() => {
-              const unitPrice = parsePrice(item.unit_price);
-              const qty = parsePrice(item.quantity) || 1;
-              const discount = parsePrice(item.discount);
-              const subtotal = unitPrice * qty - discount;
+              // Cast to any to allow checking for multiple field name variants
+              const itemAny = item as any;
+              
+              // Try multiple field name variants for unit price
+              const unitPrice = parsePrice(
+                itemAny.unit_price ?? itemAny.price ?? itemAny.unitPrice ?? itemAny.harga ?? 0
+              );
+              
+              // Try multiple field name variants for quantity
+              const qty = parsePrice(
+                itemAny.quantity ?? itemAny.qty ?? itemAny.jumlah ?? 1
+              ) || 1;
+              
+              // Try multiple field name variants for discount
+              const discount = parsePrice(itemAny.discount ?? itemAny.diskon ?? 0);
+              
+              // Try to use subtotal if it exists, otherwise calculate it
+              const subtotal = 
+                parsePrice(itemAny.subtotal ?? itemAny.total_price) ||
+                (unitPrice * qty - discount);
+              
               return (
                 <>
                   <span>{qty}x @ {formatCurrency(unitPrice)}</span>
