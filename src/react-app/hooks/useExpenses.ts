@@ -3,6 +3,8 @@ import { supabase } from "@/react-app/lib/supabase";
 import { useAuth } from "@/react-app/App";
 import type { Expense, CreateExpense, UpdateExpense } from "@/shared/types";
 
+export type { Expense, CreateExpense, UpdateExpense };
+
 export function useExpenses() {
   const { user } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);

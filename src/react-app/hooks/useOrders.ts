@@ -119,12 +119,30 @@ export function useOrders() {
     setOrders((prev) => prev.filter((o) => o.id !== id));
   };
 
-  const updateOrderItem = async (itemId: number, updates: UpdateOrderItem): Promise<void> => {
+  /** Recalculate an order's total from its items so header totals never drift. */
+  const recalcOrderTotal = async (orderId: number): Promise<void> => {
+    const { data: items } = await supabase.from("order_items").select("*").eq("order_id", orderId);
+    const total = (items ?? []).reduce(
+      (sum, i) => sum + (i.quantity ?? 0) * (i.unit_price ?? 0) - (i.discount ?? 0),
+      0
+    );
+    await supabase
+      .from("orders")
+      .update({ total_amount: total, updated_at: new Date().toISOString() })
+      .eq("id", orderId);
+  };
+
+  const updateOrderItem = async (
+    orderId: number,
+    itemId: number,
+    updates: UpdateOrderItem
+  ): Promise<void> => {
     const { error: err } = await supabase
       .from("order_items")
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq("id", itemId);
     if (err) throw new Error(err.message);
+    await recalcOrderTotal(orderId);
     await silentRefresh();
   };
 
@@ -132,12 +150,19 @@ export function useOrders() {
     const itemsToInsert = items.map((item) => ({ ...item, order_id: orderId }));
     const { error: err } = await supabase.from("order_items").insert(itemsToInsert);
     if (err) throw new Error(err.message);
+    await recalcOrderTotal(orderId);
     await silentRefresh();
   };
 
-  const deleteOrderItem = async (itemId: number): Promise<void> => {
+  /** Single-item convenience wrapper used by the order cards. */
+  const addOrderItem = async (orderId: number, item: CreateOrderItem): Promise<void> => {
+    await addOrderItems(orderId, [item]);
+  };
+
+  const deleteOrderItem = async (orderId: number, itemId: number): Promise<void> => {
     const { error: err } = await supabase.from("order_items").delete().eq("id", itemId);
     if (err) throw new Error(err.message);
+    await recalcOrderTotal(orderId);
     await silentRefresh();
   };
 
@@ -157,6 +182,7 @@ export function useOrders() {
     deleteOrder,
     updateOrderItem,
     addOrderItems,
+    addOrderItem,
     deleteOrderItem,
   };
 }

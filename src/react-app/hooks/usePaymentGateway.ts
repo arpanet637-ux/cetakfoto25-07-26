@@ -36,7 +36,65 @@ export function usePaymentGateway() {
     }
   }, []);
 
+  const hashPin = async (pin: string): Promise<string> => {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pin));
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
+  const setPin = async (pin: string): Promise<void> => {
+    const pin_hash = await hashPin(pin);
+    const { data: existing } = await supabase
+      .from("payment_gateway_settings")
+      .select("id")
+      .maybeSingle();
+
+    if (existing) {
+      const { error: err } = await supabase
+        .from("payment_gateway_settings")
+        .update({ pin_hash, updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+      if (err) throw new Error(err.message);
+    } else {
+      const { error: err } = await supabase
+        .from("payment_gateway_settings")
+        .insert({ pin_hash });
+      if (err) throw new Error(err.message);
+    }
+    await fetchSettings();
+  };
+
+  const verifyPin = async (
+    pin: string,
+  ): Promise<{
+    verified: boolean;
+    doku_client_id: string | null;
+    doku_secret_key: string | null;
+    doku_environment: "sandbox" | "production" | null;
+  }> => {
+    const pin_hash = await hashPin(pin);
+    const { data, error: err } = await supabase
+      .from("payment_gateway_settings")
+      .select("*")
+      .maybeSingle();
+    if (err) throw new Error(err.message);
+    if (!data || data.pin_hash !== pin_hash) throw new Error("PIN salah");
+    return {
+      verified: true,
+      doku_client_id: data.doku_client_id,
+      doku_secret_key: data.doku_secret_key,
+      doku_environment: data.doku_environment,
+    };
+  };
+
   const updateSettings = async (updates: any): Promise<void> => {
+    // Credentials can only be written by someone who knows the PIN.
+    if (settings?.has_pin) {
+      if (!updates.pin) throw new Error("PIN wajib diisi untuk menyimpan kredensial.");
+      await verifyPin(updates.pin);
+    }
+
     if (settings) {
       const { error: err } = await supabase
         .from("payment_gateway_settings")
@@ -65,5 +123,15 @@ export function usePaymentGateway() {
     if (user) fetchSettings();
   }, [fetchSettings, user]);
 
-  return { settings, loading, error, fetchSettings, updateSettings };
+  return {
+    settings,
+    // `info` is the name the settings page uses for the non-secret summary.
+    info: settings,
+    loading,
+    error,
+    fetchSettings,
+    setPin,
+    verifyPin,
+    updateSettings,
+  };
 }

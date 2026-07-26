@@ -3,6 +3,8 @@ import { supabase } from "@/react-app/lib/supabase";
 import { useAuth } from "@/react-app/App";
 import type { StoreSettings, UpdateStoreSettings } from "@/shared/types";
 
+export type { StoreSettings, UpdateStoreSettings };
+
 export function useStoreSettings() {
   const { user } = useAuth();
   const [settings, setSettings] = useState<StoreSettings | null>(null);
