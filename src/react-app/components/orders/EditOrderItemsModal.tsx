@@ -96,6 +96,10 @@ export default function EditOrderItemsModal({
 
   const handleAddItem = async () => {
     if (!newItem.product) return;
+    if (!newItem.product.price || newItem.product.price <= 0) {
+      alert("⚠️ Harga produk tidak valid. Periksa data produk atau hubungi administrator.");
+      return;
+    }
     setLoading(true);
     try {
       await onAddItem({
@@ -215,7 +219,14 @@ export default function EditOrderItemsModal({
               </div>
 
               {newItem.product && (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-3">
+                  <div className="bg-muted p-2 rounded text-sm">
+                    <span className="font-medium">{newItem.product.name}</span>
+                    <span className="text-muted-foreground ml-2">
+                      @ {newItem.product.price ? formatCurrency(newItem.product.price) : "⚠️ Harga tidak tersedia"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-sm">Jumlah</Label>
                     <Input
@@ -245,6 +256,7 @@ export default function EditOrderItemsModal({
                       className="mt-1"
                     />
                   </div>
+                </div>
                 </div>
               )}
 
