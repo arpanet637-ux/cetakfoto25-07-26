@@ -1,6 +1,23 @@
-import { createClient } from "@supabase/supabase-js";
+/**
+ * Compatibility client.
+ *
+ * The previous remote backend (Cloudflare D1 / GetMocha) is gone, and calling
+ * `createClient()` without env vars threw at module load - which is what turned
+ * the deployed site into a blank screen.
+ *
+ * This module now exposes the same `supabase`-shaped API backed entirely by
+ * localStorage, so no call site had to change.
+ */
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+import { localDb } from "./local-db";
+import { localAuth } from "./local-auth";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export type { User, Session, AuthError } from "./local-auth";
+export { initLocalDb, exportDatabase, replaceDatabase, resetDatabase } from "./local-db";
+export { initLocalAuth, DEFAULT_EMAIL, DEFAULT_PASSWORD } from "./local-auth";
+
+export const supabase = {
+  from: localDb.from,
+  storage: localDb.storage,
+  auth: localAuth,
+};

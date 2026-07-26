@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/react-app/lib/supabase";
+import { DEFAULT_EMAIL, DEFAULT_PASSWORD } from "@/react-app/lib/local-auth";
 import { Printer } from "lucide-react";
 import { Button } from "@/react-app/components/ui/button";
 
@@ -90,6 +91,25 @@ export default function LoginPage() {
               {isSignUp ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar"}
             </button>
           </div>
+
+          {!isSignUp && (
+            <div className="mt-6 rounded-lg border border-teal-100 bg-teal-50/60 p-3 text-center">
+              <p className="text-xs text-gray-600">
+                Akun bawaan: <span className="font-medium text-gray-800">{DEFAULT_EMAIL}</span> / {DEFAULT_PASSWORD}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail(DEFAULT_EMAIL);
+                  setPassword(DEFAULT_PASSWORD);
+                  setError(null);
+                }}
+                className="mt-1 text-xs font-medium text-teal-700 hover:text-teal-800 underline"
+              >
+                Isi otomatis
+              </button>
+            </div>
+          )}
         </div>
 
         <p className="text-center text-sm text-gray-400 mt-8">
