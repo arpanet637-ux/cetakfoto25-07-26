@@ -13,12 +13,33 @@ interface InvoicePreviewProps {
   onOrderUpdated?: () => void;
 }
 
-const formatCurrency = (amount: number) => {
+/**
+ * Parse any value to a safe number, handling null, undefined, strings, etc.
+ * Returns 0 if parsing fails or value is NaN.
+ */
+const parsePrice = (val: any): number => {
+  if (typeof val === "number" && !isNaN(val)) return val;
+  if (typeof val === "string") {
+    const cleaned = val.replace(/[^0-9]/g, "");
+    return cleaned ? parseInt(cleaned, 10) : 0;
+  }
+  return 0;
+};
+
+const formatCurrency = (amount: number | null | undefined) => {
+  const safeAmount = parsePrice(amount);
+  if (isNaN(safeAmount) || safeAmount === 0) {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(0);
+  }
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
     minimumFractionDigits: 0,
-  }).format(amount);
+  }).format(safeAmount);
 };
 
 const formatDate = (dateStr: string) => {
@@ -43,10 +64,13 @@ export default function InvoicePreview({
     ? branches.find(b => b.id === order.branch_id)?.name 
     : null;
   
-  const remainingAmount = order.total_amount - order.paid_amount;
+  // Use safe parsing for all calculations
+  const totalAmount = parsePrice(order.total_amount);
+  const paidAmount = parsePrice(order.paid_amount);
+  const remainingAmount = totalAmount - paidAmount;
   
   // Calculate admin fee using QRIS rate (most common)
-  const adminFeePercent = storeSettings?.admin_fee_qris || 0;
+  const adminFeePercent = parsePrice(storeSettings?.admin_fee_qris) || 0;
   const adminFee = remainingAmount > 0 ? Math.ceil(remainingAmount * (adminFeePercent / 100)) : 0;
   const totalWithFee = remainingAmount + adminFee;
 
@@ -102,11 +126,12 @@ export default function InvoicePreview({
       // List items
       message += `*Detail Pesanan:*\n`;
       (order.items || []).forEach((item) => {
-        message += `• ${item.product_name} x${item.quantity} = ${formatCurrency(item.subtotal)}\n`;
+        const itemSubtotal = parsePrice(item.subtotal);
+        message += `• ${item.product_name} x${item.quantity} = ${formatCurrency(itemSubtotal)}\n`;
       });
       
-      message += `\n*TOTAL: ${formatCurrency(order.total_amount)}*\n`;
-      message += `Dibayar: ${formatCurrency(order.paid_amount)}\n`;
+      message += `\n*TOTAL: ${formatCurrency(totalAmount)}*\n`;
+      message += `Dibayar: ${formatCurrency(paidAmount)}\n`;
       
       if (remainingAmount > 0) {
         message += `Sisa Bayar: ${formatCurrency(remainingAmount)}\n`;
@@ -305,32 +330,37 @@ export default function InvoicePreview({
                   Detail Pembayaran
                 </div>
                 <div className="text-sm text-gray-600">
-                  <div className="flex justify-between py-1">
-                    <span>Status:</span>
-                    <span
-                      className={`font-medium ${
-                        order.paid_amount >= order.total_amount
-                          ? "text-green-600"
-                          : "text-orange-600"
-                      }`}
-                    >
-                      {order.paid_amount >= order.total_amount
-                        ? "Lunas"
-                        : "Belum Lunas"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span>Terbayar:</span>
-                    <span>{formatCurrency(order.paid_amount)}</span>
-                  </div>
-                  {order.paid_amount < order.total_amount && (
-                    <div className="flex justify-between py-1 font-medium text-red-600">
-                      <span>Sisa:</span>
-                      <span>
-                        {formatCurrency(order.total_amount - order.paid_amount)}
-                      </span>
-                    </div>
-                  )}
+                  {(() => {
+                    const isLunas = paidAmount >= totalAmount;
+                    return (
+                      <>
+                        <div className="flex justify-between py-1">
+                          <span>Status:</span>
+                          <span
+                            className={`font-medium ${
+                              isLunas
+                                ? "text-green-600"
+                                : "text-orange-600"
+                            }`}
+                          >
+                            {isLunas ? "Lunas" : "Belum Lunas"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-1">
+                          <span>Terbayar:</span>
+                          <span>{formatCurrency(paidAmount)}</span>
+                        </div>
+                        {!isLunas && (
+                          <div className="flex justify-between py-1 font-medium text-red-600">
+                            <span>Sisa:</span>
+                            <span>
+                              {formatCurrency(remainingAmount)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -367,63 +397,81 @@ export default function InvoicePreview({
                 </tr>
               </thead>
               <tbody>
-                {(order.items || []).map((item, index) => (
-                  <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                    <td className="px-4 py-3">
-                      <div className="product-name font-medium text-gray-900">
-                        {item.product_name}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center text-gray-700">
-                      {item.quantity}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-700">
-                      {formatCurrency(item.unit_price)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {item.discount > 0 ? (
-                        <span className="discount text-green-600">
-                          -{formatCurrency(item.discount)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">
-                      {formatCurrency(item.subtotal)}
-                    </td>
-                  </tr>
-                ))}
+                {(order.items || []).map((item, index) => {
+                  const itemAny = item as any;
+                  const unitPrice = parsePrice(itemAny.unit_price ?? itemAny.price ?? 0);
+                  const quantity = parsePrice(itemAny.quantity ?? 1);
+                  const discount = parsePrice(itemAny.discount ?? 0);
+                  const subtotal = parsePrice(itemAny.subtotal) || (unitPrice * quantity - discount);
+                  return (
+                    <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                      <td className="px-4 py-3">
+                        <div className="product-name font-medium text-gray-900">
+                          {item.product_name}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-700">
+                        {quantity}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700">
+                        {formatCurrency(unitPrice)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {discount > 0 ? (
+                          <span className="discount text-green-600">
+                            -{formatCurrency(discount)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-900">
+                        {formatCurrency(subtotal)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
             {/* Totals */}
             <div className="totals flex justify-end">
               <div className="totals-box w-72">
-                <div className="total-row flex justify-between py-2 text-sm text-gray-600">
-                  <span>Subtotal:</span>
-                  <span>{formatCurrency((order.items || []).reduce((sum, item) => sum + item.subtotal, 0))}</span>
-                </div>
-                {order.discount && order.discount > 0 && (
-                  <div className="total-row discount flex justify-between py-2 text-sm text-orange-600">
-                    <span>Diskon:</span>
-                    <span>-{formatCurrency(order.discount)}</span>
-                  </div>
-                )}
-                <div className="total-row grand mt-2 flex justify-between border-t-2 border-teal-600 pt-3 text-xl font-bold text-teal-600">
-                  <span>TOTAL:</span>
-                  <span>{formatCurrency(order.total_amount)}</span>
-                </div>
-                <div className="total-row flex justify-between py-2 text-base font-semibold text-gray-700">
-                  <span>Dibayar:</span>
-                  <span>{formatCurrency(order.paid_amount)}</span>
-                </div>
-                <div className="total-row flex justify-between py-2 text-base">
-                  <span>Sisa Bayar:</span>
-                  <span className={remainingAmount > 0 ? "text-red-600 font-bold" : "text-green-600 font-bold"}>
-                    {formatCurrency(remainingAmount)}
-                  </span>
-                </div>
+                {(() => {
+                  const itemsSubtotal = (order.items || []).reduce((sum, item) => {
+                    const itemSubtotal = parsePrice((item as any).subtotal);
+                    return sum + itemSubtotal;
+                  }, 0);
+                  const orderDiscount = parsePrice(order.discount);
+                  return (
+                    <>
+                      <div className="total-row flex justify-between py-2 text-sm text-gray-600">
+                        <span>Subtotal:</span>
+                        <span>{formatCurrency(itemsSubtotal)}</span>
+                      </div>
+                      {orderDiscount > 0 && (
+                        <div className="total-row discount flex justify-between py-2 text-sm text-orange-600">
+                          <span>Diskon:</span>
+                          <span>-{formatCurrency(orderDiscount)}</span>
+                        </div>
+                      )}
+                      <div className="total-row grand mt-2 flex justify-between border-t-2 border-teal-600 pt-3 text-xl font-bold text-teal-600">
+                        <span>TOTAL:</span>
+                        <span>{formatCurrency(totalAmount)}</span>
+                      </div>
+                      <div className="total-row flex justify-between py-2 text-base font-semibold text-gray-700">
+                        <span>Dibayar:</span>
+                        <span>{formatCurrency(paidAmount)}</span>
+                      </div>
+                      <div className="total-row flex justify-between py-2 text-base">
+                        <span>Sisa Bayar:</span>
+                        <span className={remainingAmount > 0 ? "text-red-600 font-bold" : "text-green-600 font-bold"}>
+                          {formatCurrency(remainingAmount)}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
                 {remainingAmount > 0 && adminFee > 0 && (
                   <>
                     <div className="total-row flex justify-between py-2 text-sm text-blue-600">
