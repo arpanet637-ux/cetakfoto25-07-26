@@ -82,11 +82,23 @@ export default function OrderFormModal({
   }, [isOpen]);
 
   const handleProductSelect = (product: Product) => {
+    // Ensure price is a clean number
+    const priceValue = product.price as any;
+    const productPrice = typeof priceValue === "string"
+      ? parseInt(priceValue.replace(/[^0-9]/g, ""), 10)
+      : Number(priceValue) || 0;
+    
+    // Guard against missing prices
+    if (!productPrice || productPrice <= 0) {
+      alert(`⚠️ Produk "${product.name}" tidak memiliki harga yang valid. Hubungi administrator.`);
+      return;
+    }
+
     const newItem: OrderItem = {
       product_id: product.id,
       product_name: product.name,
       quantity: 1,
-      unit_price: product.price,
+      unit_price: productPrice,
       discount: 0,
       method: product.default_method,
       deadline_date: new Date().toISOString().split("T")[0],
@@ -118,6 +130,33 @@ export default function OrderFormModal({
     if (!clientName.trim() || items.length === 0) {
       return;
     }
+
+    // Validate all items have proper prices before saving
+    const invalidItems = items.filter(
+      (item) =>
+        item.unit_price === undefined ||
+        item.unit_price === null ||
+        typeof item.unit_price !== "number" ||
+        item.unit_price <= 0
+    );
+
+    if (invalidItems.length > 0) {
+      alert(
+        `❌ Terdapat ${invalidItems.length} item dengan harga tidak valid:\n` +
+        invalidItems.map((item) => `• ${item.product_name}`).join("\n") +
+        "\n\nHarap periksa harga setiap item sebelum menyimpan."
+      );
+      return;
+    }
+
+    // Ensure all prices are clean numbers in the payload
+    const cleanItems = items.map((item) => ({
+      ...item,
+      unit_price: Number(item.unit_price),
+      quantity: Number(item.quantity),
+      discount: Number(item.discount),
+    }));
+
     setLoading(true);
     try {
       await onSubmit({
@@ -126,7 +165,7 @@ export default function OrderFormModal({
         notes: notes || undefined,
         discount: overallDiscount,
         branch_id: branchId,
-        items,
+        items: cleanItems,
       });
       onClose();
     } finally {
