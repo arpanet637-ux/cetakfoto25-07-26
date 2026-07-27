@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import db from './db';
+import { query } from './db';
 
 export default async (req: VercelRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,12 +13,12 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
   try {
     if (req.method === 'GET') {
-      const result = await db.query('SELECT * FROM branches ORDER BY created_at DESC');
+      const result = await query('SELECT * FROM branches ORDER BY created_at DESC');
       res.status(200).json(result.rows);
     } else if (req.method === 'POST') {
       const { name, address, phone } = req.body;
       
-      const result = await db.query(
+      const result = await query(
         `INSERT INTO branches (name, address, phone)
          VALUES ($1, $2, $3)
          RETURNING *`,
@@ -29,7 +29,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     } else if (req.method === 'PUT') {
       const { id, name, address, phone } = req.body;
       
-      const result = await db.query(
+      const result = await query(
         `UPDATE branches 
          SET name = COALESCE($2, name),
              address = COALESCE($3, address),
@@ -44,7 +44,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     } else if (req.method === 'DELETE') {
       const { id } = req.body;
       
-      await db.query('DELETE FROM branches WHERE id = $1', [id]);
+      await query('DELETE FROM branches WHERE id = $1', [id]);
       res.status(204).end();
     } else {
       res.status(405).json({ error: 'Method not allowed' });

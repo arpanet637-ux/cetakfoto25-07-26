@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import db from './db';
+import { query } from './db';
 
 export default async (req: VercelRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,17 +13,17 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
   try {
     if (req.method === 'GET') {
-      const result = await db.query('SELECT * FROM store_settings ORDER BY id DESC LIMIT 1');
+      const result = await query('SELECT * FROM store_settings ORDER BY id DESC LIMIT 1');
       res.status(200).json(result.rows[0] || {});
     } else if (req.method === 'POST' || req.method === 'PUT') {
       const { business_name, owner_name, phone, email, address, city, province, postal_code, admin_fee_bca, admin_fee_bri, admin_fee_mandiri, admin_fee_qris } = req.body;
       
       // Check if settings exist
-      const existing = await db.query('SELECT id FROM store_settings LIMIT 1');
+      const existing = await query('SELECT id FROM store_settings LIMIT 1');
       
       let result;
       if (existing.rows.length > 0) {
-        result = await db.query(
+        result = await query(
           `UPDATE store_settings 
            SET business_name = COALESCE($2, business_name),
                owner_name = COALESCE($3, owner_name),
@@ -43,7 +43,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
           [existing.rows[0].id, business_name, owner_name, phone, email, address, city, province, postal_code, admin_fee_bca, admin_fee_bri, admin_fee_mandiri, admin_fee_qris]
         );
       } else {
-        result = await db.query(
+        result = await query(
           `INSERT INTO store_settings (business_name, owner_name, phone, email, address, city, province, postal_code, admin_fee_bca, admin_fee_bri, admin_fee_mandiri, admin_fee_qris)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
            RETURNING *`,

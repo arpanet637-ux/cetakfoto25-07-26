@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import db from './db';
+import { query } from './db';
 
 export default async (req: VercelRequest, res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,7 +14,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   try {
     if (req.method === 'GET') {
       // Get all orders with items
-      const result = await db.query(`
+      const result = await query(`
         SELECT o.*, 
           json_agg(json_build_object(
             'id', oi.id,
