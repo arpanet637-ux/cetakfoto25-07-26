@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/react-app/lib/supabase";
 import { useAuth } from "@/react-app/App";
 import type { StoreSettings, UpdateStoreSettings } from "@/shared/types";
 
@@ -14,12 +13,10 @@ export function useStoreSettings() {
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error: err } = await supabase
-        .from("store_settings")
-        .select("*")
-        .maybeSingle();
-      if (err) throw new Error(err.message);
-      setSettings(data);
+      const response = await fetch("/api/settings");
+      if (!response.ok) throw new Error(`Failed to fetch settings: ${response.statusText}`);
+      const data = await response.json();
+      setSettings(data ?? null);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -29,26 +26,15 @@ export function useStoreSettings() {
   }, []);
 
   const updateSettings = async (updates: UpdateStoreSettings): Promise<StoreSettings> => {
-    if (settings) {
-      const { data, error: err } = await supabase
-        .from("store_settings")
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq("id", settings.id)
-        .select()
-        .single();
-      if (err) throw new Error(err.message);
-      setSettings(data);
-      return data;
-    } else {
-      const { data, error: err } = await supabase
-        .from("store_settings")
-        .insert({ name: updates.name ?? "Toko Saya", ...updates })
-        .select()
-        .single();
-      if (err) throw new Error(err.message);
-      setSettings(data);
-      return data;
-    }
+    const response = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...settings, ...updates }),
+    });
+    if (!response.ok) throw new Error(`Failed to update settings: ${response.statusText}`);
+    const data = await response.json();
+    setSettings(data);
+    return data;
   };
 
   useEffect(() => {

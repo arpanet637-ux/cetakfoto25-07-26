@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/react-app/lib/supabase";
 import { useAuth } from "@/react-app/App";
 import type { Branch, CreateBranch, UpdateBranch } from "@/shared/types";
 
@@ -12,11 +11,9 @@ export function useBranches() {
   const fetchBranches = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error: err } = await supabase
-        .from("branches")
-        .select("*")
-        .order("name");
-      if (err) throw new Error(err.message);
+      const response = await fetch("/api/branches");
+      if (!response.ok) throw new Error(`Failed to fetch branches: ${response.statusText}`);
+      const data = await response.json();
       setBranches(data ?? []);
       setError(null);
     } catch (err) {
@@ -27,31 +24,36 @@ export function useBranches() {
   }, []);
 
   const createBranch = async (branch: CreateBranch): Promise<Branch> => {
-    const { data, error: err } = await supabase
-      .from("branches")
-      .insert(branch)
-      .select()
-      .single();
-    if (err) throw new Error(err.message);
+    const response = await fetch("/api/branches", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(branch),
+    });
+    if (!response.ok) throw new Error(`Failed to create branch: ${response.statusText}`);
+    const data = await response.json();
     setBranches((prev) => [...prev, data]);
     return data;
   };
 
   const updateBranch = async (id: number, updates: UpdateBranch): Promise<Branch> => {
-    const { data, error: err } = await supabase
-      .from("branches")
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .select()
-      .single();
-    if (err) throw new Error(err.message);
+    const response = await fetch("/api/branches", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...updates }),
+    });
+    if (!response.ok) throw new Error(`Failed to update branch: ${response.statusText}`);
+    const data = await response.json();
     setBranches((prev) => prev.map((b) => (b.id === id ? data : b)));
     return data;
   };
 
   const deleteBranch = async (id: number): Promise<void> => {
-    const { error: err } = await supabase.from("branches").delete().eq("id", id);
-    if (err) throw new Error(err.message);
+    const response = await fetch("/api/branches", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (!response.ok) throw new Error(`Failed to delete branch: ${response.statusText}`);
     setBranches((prev) => prev.filter((b) => b.id !== id));
   };
 

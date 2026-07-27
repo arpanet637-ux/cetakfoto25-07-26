@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/react-app/lib/supabase";
 import { useAuth } from "@/react-app/App";
 import type { Product, CreateProduct, UpdateProduct } from "@/shared/types";
 
@@ -12,11 +11,9 @@ export function useProducts() {
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error: err } = await supabase
-        .from("products")
-        .select("*")
-        .order("name");
-      if (err) throw new Error(err.message);
+      const response = await fetch("/api/products");
+      if (!response.ok) throw new Error(`Failed to fetch products: ${response.statusText}`);
+      const data = await response.json();
       setProducts(data ?? []);
       setError(null);
     } catch (err) {
@@ -27,34 +24,36 @@ export function useProducts() {
   }, []);
 
   const createProduct = async (product: CreateProduct): Promise<Product> => {
-    const { data, error: err } = await supabase
-      .from("products")
-      .insert(product)
-      .select()
-      .single();
-    if (err) throw new Error(err.message);
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(product),
+    });
+    if (!response.ok) throw new Error(`Failed to create product: ${response.statusText}`);
+    const data = await response.json();
     setProducts((prev) => [...prev, data]);
     return data;
   };
 
   const updateProduct = async (id: number, updates: UpdateProduct): Promise<Product> => {
-    const { data, error: err } = await supabase
-      .from("products")
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .select()
-      .single();
-    if (err) throw new Error(err.message);
+    const response = await fetch("/api/products", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...updates }),
+    });
+    if (!response.ok) throw new Error(`Failed to update product: ${response.statusText}`);
+    const data = await response.json();
     setProducts((prev) => prev.map((p) => (p.id === id ? data : p)));
     return data;
   };
 
   const deleteProduct = async (id: number): Promise<void> => {
-    const { error: err } = await supabase
-      .from("products")
-      .delete()
-      .eq("id", id);
-    if (err) throw new Error(err.message);
+    const response = await fetch("/api/products", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (!response.ok) throw new Error(`Failed to delete product: ${response.statusText}`);
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
