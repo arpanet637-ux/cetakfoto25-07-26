@@ -16,7 +16,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       const result = await query('SELECT * FROM store_settings ORDER BY id DESC LIMIT 1');
       res.status(200).json(result.rows[0] || {});
     } else if (req.method === 'POST' || req.method === 'PUT') {
-      const { business_name, owner_name, phone, email, address, city, province, postal_code, admin_fee_bca, admin_fee_bri, admin_fee_mandiri, admin_fee_qris } = req.body;
+      const { name, phone, email, address, instagram, facebook, user_id, admin_fee_qris, admin_fee_va, admin_fee_ewallet, admin_fee_cc } = req.body;
       
       // Check if settings exist
       const existing = await query('SELECT id FROM store_settings LIMIT 1');
@@ -25,29 +25,28 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       if (existing.rows.length > 0) {
         result = await query(
           `UPDATE store_settings 
-           SET business_name = COALESCE($2, business_name),
-               owner_name = COALESCE($3, owner_name),
-               phone = COALESCE($4, phone),
-               email = COALESCE($5, email),
-               address = COALESCE($6, address),
-               city = COALESCE($7, city),
-               province = COALESCE($8, province),
-               postal_code = COALESCE($9, postal_code),
-               admin_fee_bca = COALESCE($10, admin_fee_bca),
-               admin_fee_bri = COALESCE($11, admin_fee_bri),
-               admin_fee_mandiri = COALESCE($12, admin_fee_mandiri),
-               admin_fee_qris = COALESCE($13, admin_fee_qris),
+           SET name = COALESCE($2, name),
+               phone = COALESCE($3, phone),
+               email = COALESCE($4, email),
+               address = COALESCE($5, address),
+               instagram = COALESCE($6, instagram),
+               facebook = COALESCE($7, facebook),
+               user_id = COALESCE($8, user_id),
+               admin_fee_qris = COALESCE($9, admin_fee_qris),
+               admin_fee_va = COALESCE($10, admin_fee_va),
+               admin_fee_ewallet = COALESCE($11, admin_fee_ewallet),
+               admin_fee_cc = COALESCE($12, admin_fee_cc),
                updated_at = NOW()
            WHERE id = $1
            RETURNING *`,
-          [existing.rows[0].id, business_name, owner_name, phone, email, address, city, province, postal_code, admin_fee_bca, admin_fee_bri, admin_fee_mandiri, admin_fee_qris]
+          [existing.rows[0].id, name, phone, email, address, instagram, facebook, user_id, admin_fee_qris, admin_fee_va, admin_fee_ewallet, admin_fee_cc]
         );
       } else {
         result = await query(
-          `INSERT INTO store_settings (business_name, owner_name, phone, email, address, city, province, postal_code, admin_fee_bca, admin_fee_bri, admin_fee_mandiri, admin_fee_qris)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          `INSERT INTO store_settings (name, phone, email, address, instagram, facebook, user_id, admin_fee_qris, admin_fee_va, admin_fee_ewallet, admin_fee_cc)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
            RETURNING *`,
-          [business_name, owner_name, phone, email, address, city, province, postal_code, admin_fee_bca, admin_fee_bri, admin_fee_mandiri, admin_fee_qris]
+          [name, phone, email, address, instagram, facebook, user_id, admin_fee_qris, admin_fee_va, admin_fee_ewallet, admin_fee_cc]
         );
       }
 

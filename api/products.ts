@@ -16,22 +16,22 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       const result = await query('SELECT * FROM products ORDER BY created_at DESC');
       res.status(200).json(result.rows);
     } else if (req.method === 'POST') {
-      const { name, description, price, default_method, category } = req.body;
+      const { name, price, stock, min_stock, default_method, user_id } = req.body;
       
       if (!name) {
         return res.status(400).json({ error: 'Product name is required' });
       }
       
       const result = await query(
-        `INSERT INTO products (name, description, price, default_method, category)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO products (name, price, stock, min_stock, default_method, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
-        [name, description, price, default_method, category]
+        [name, price || 0, stock || 0, min_stock || 0, default_method, user_id]
       );
 
       res.status(201).json(result.rows[0]);
     } else if (req.method === 'PUT') {
-      const { id, name, description, price, default_method, category } = req.body;
+      const { id, name, price, stock, min_stock, default_method, user_id } = req.body;
       
       if (!id) {
         return res.status(400).json({ error: 'Product ID is required' });
@@ -40,14 +40,15 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       const result = await query(
         `UPDATE products 
          SET name = COALESCE($2, name),
-             description = COALESCE($3, description),
-             price = COALESCE($4, price),
-             default_method = COALESCE($5, default_method),
-             category = COALESCE($6, category),
+             price = COALESCE($3, price),
+             stock = COALESCE($4, stock),
+             min_stock = COALESCE($5, min_stock),
+             default_method = COALESCE($6, default_method),
+             user_id = COALESCE($7, user_id),
              updated_at = NOW()
          WHERE id = $1
          RETURNING *`,
-        [id, name, description, price, default_method, category]
+        [id, name, price, stock, min_stock, default_method, user_id]
       );
 
       if (result.rows.length === 0) {
