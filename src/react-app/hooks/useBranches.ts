@@ -11,7 +11,13 @@ export function useBranches() {
   const fetchBranches = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/branches");
+      const response = await fetch("/api/branches").catch(() => null);
+      if (!response) {
+        setError("Database connection not available. Deploy to Vercel for full functionality.");
+        setBranches([]);
+        setLoading(false);
+        return;
+      }
       if (!response.ok) throw new Error(`Failed to fetch branches: ${response.statusText}`);
       const data = await response.json();
       setBranches(data ?? []);

@@ -11,7 +11,13 @@ export function useProducts() {
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/products");
+      const response = await fetch("/api/products").catch(() => null);
+      if (!response) {
+        setError("Database connection not available. Deploy to Vercel for full functionality.");
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
       if (!response.ok) throw new Error(`Failed to fetch products: ${response.statusText}`);
       const data = await response.json();
       setProducts(data ?? []);

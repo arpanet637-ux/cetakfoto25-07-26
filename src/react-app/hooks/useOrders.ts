@@ -15,7 +15,14 @@ export function useOrders() {
     try {
       if (showLoading && isInitialLoad.current) setLoading(true);
 
-      const response = await fetch("/api/orders");
+      const response = await fetch("/api/orders").catch(() => null);
+      if (!response) {
+        // In dev mode, Neon API may not be available - show message
+        setError("Database connection not available. Deploy to Vercel for full functionality.");
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
       if (!response.ok) throw new Error(`Failed to fetch orders: ${response.statusText}`);
       
       let result: OrderWithItems[] = await response.json();

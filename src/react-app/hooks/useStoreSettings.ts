@@ -13,7 +13,13 @@ export function useStoreSettings() {
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/settings");
+      const response = await fetch("/api/settings").catch(() => null);
+      if (!response) {
+        setError("Database connection not available. Deploy to Vercel for full functionality.");
+        setSettings(null);
+        setLoading(false);
+        return;
+      }
       if (!response.ok) throw new Error(`Failed to fetch settings: ${response.statusText}`);
       const data = await response.json();
       setSettings(data ?? null);
