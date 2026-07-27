@@ -18,6 +18,10 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     } else if (req.method === 'POST') {
       const { name, address, phone } = req.body;
       
+      if (!name) {
+        return res.status(400).json({ error: 'Branch name is required' });
+      }
+      
       const result = await query(
         `INSERT INTO branches (name, address, phone)
          VALUES ($1, $2, $3)
@@ -28,6 +32,10 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       res.status(201).json(result.rows[0]);
     } else if (req.method === 'PUT') {
       const { id, name, address, phone } = req.body;
+      
+      if (!id) {
+        return res.status(400).json({ error: 'Branch ID is required' });
+      }
       
       const result = await query(
         `UPDATE branches 
@@ -40,11 +48,24 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         [id, name, address, phone]
       );
 
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Branch not found' });
+      }
+
       res.status(200).json(result.rows[0]);
     } else if (req.method === 'DELETE') {
       const { id } = req.body;
       
-      await query('DELETE FROM branches WHERE id = $1', [id]);
+      if (!id) {
+        return res.status(400).json({ error: 'Branch ID is required' });
+      }
+      
+      const result = await query('DELETE FROM branches WHERE id = $1', [id]);
+      
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Branch not found' });
+      }
+      
       res.status(204).end();
     } else {
       res.status(405).json({ error: 'Method not allowed' });

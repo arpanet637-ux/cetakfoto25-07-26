@@ -40,7 +40,11 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       // Create new order
       const { order_number, branch_id, client_name, client_phone, notes, total_amount, discount, items } = req.body;
       
-      const orderResult = await db.query(
+      if (!order_number || !client_name) {
+        return res.status(400).json({ error: 'Order number and client name are required' });
+      }
+      
+      const orderResult = await query(
         `INSERT INTO orders (order_number, branch_id, client_name, client_phone, notes, total_amount, discount, paid_amount)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
@@ -52,7 +56,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       // Insert order items
       if (items && items.length > 0) {
         for (const item of items) {
-          await db.query(
+          await query(
             `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, discount, subtotal, method, deadline_date)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
             [orderId, item.product_id, item.product_name, item.quantity, item.unit_price, item.discount, item.subtotal, item.method, item.deadline_date]
@@ -61,7 +65,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       }
 
       // Fetch the complete order with items
-      const completeOrder = await db.query(`
+      const completeOrder = await query(`
         SELECT o.*, 
           json_agg(json_build_object(
             'id', oi.id,
@@ -88,7 +92,11 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       // Update order
       const { id, client_name, client_phone, notes, discount, status } = req.body;
       
-      const result = await db.query(
+      if (!id) {
+        return res.status(400).json({ error: 'Order ID is required' });
+      }
+      
+      const result = await query(
         `UPDATE orders 
          SET client_name = COALESCE($2, client_name),
              client_phone = COALESCE($3, client_phone),
@@ -101,12 +109,25 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         [id, client_name, client_phone, notes, discount, status]
       );
 
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
       res.status(200).json(result.rows[0]);
     } else if (req.method === 'DELETE') {
       // Delete order
       const { id } = req.body;
       
-      await db.query('DELETE FROM orders WHERE id = $1', [id]);
+      if (!id) {
+        return res.status(400).json({ error: 'Order ID is required' });
+      }
+      
+      const result = await query('DELETE FROM orders WHERE id = $1', [id]);
+      
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+      
       res.status(204).end();
     } else {
       res.status(405).json({ error: 'Method not allowed' });

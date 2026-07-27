@@ -51,6 +51,10 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         );
       }
 
+      if (result.rows.length === 0) {
+        return res.status(500).json({ error: 'Failed to save settings' });
+      }
+
       res.status(200).json(result.rows[0]);
     } else {
       res.status(405).json({ error: 'Method not allowed' });
