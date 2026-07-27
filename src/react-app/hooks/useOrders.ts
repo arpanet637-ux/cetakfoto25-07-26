@@ -70,46 +70,76 @@ export function useOrders() {
   }, [fetchOrders, user]);
 
   const createOrder = async (order: any): Promise<OrderWithItems> => {
-    const response = await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(order),
-    });
-    if (!response.ok) throw new Error(`Failed to create order: ${response.statusText}`);
-    
-    const result = await response.json();
-    setOrders((prev) => [result, ...prev]);
-    return result;
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to create order: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      setOrders((prev) => [result, ...prev]);
+      setError(null);
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    }
   };
 
   const updateOrder = async (id: number, updates: any): Promise<OrderWithItems> => {
-    const response = await fetch("/api/orders", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...updates }),
-    });
-    if (!response.ok) throw new Error(`Failed to update order: ${response.statusText}`);
-    
-    const updated = await response.json();
-    
-    // Fetch items for the updated order
-    const itemsResponse = await fetch(`/api/orders?id=${id}`);
-    const allOrders = await itemsResponse.json();
-    const order = allOrders.find((o: any) => o.id === id);
-    const result = { ...updated, items: order?.items ?? [] };
-    
-    setOrders((prev) => prev.map((o) => (o.id === id ? result : o)));
-    return result;
+    try {
+      const response = await fetch("/api/orders", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to update order: ${response.statusText}`);
+      }
+      
+      const updated = await response.json();
+      
+      // Fetch items for the updated order
+      const itemsResponse = await fetch(`/api/orders?id=${id}`);
+      const allOrders = await itemsResponse.json();
+      const order = allOrders.find((o: any) => o.id === id);
+      const result = { ...updated, items: order?.items ?? [] };
+      
+      setOrders((prev) => prev.map((o) => (o.id === id ? result : o)));
+      setError(null);
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    }
   };
 
   const deleteOrder = async (id: number): Promise<void> => {
-    const response = await fetch("/api/orders", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (!response.ok) throw new Error(`Failed to delete order: ${response.statusText}`);
-    setOrders((prev) => prev.filter((o) => o.id !== id));
+    try {
+      const response = await fetch("/api/orders", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to delete order: ${response.statusText}`);
+      }
+      setOrders((prev) => prev.filter((o) => o.id !== id));
+      setError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    }
   };
 
   /** Recalculate an order's total from its items so header totals never drift. */

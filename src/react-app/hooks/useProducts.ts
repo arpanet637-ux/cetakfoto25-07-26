@@ -30,37 +30,67 @@ export function useProducts() {
   }, []);
 
   const createProduct = async (product: CreateProduct): Promise<Product> => {
-    const response = await fetch("/api/products", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(product),
-    });
-    if (!response.ok) throw new Error(`Failed to create product: ${response.statusText}`);
-    const data = await response.json();
-    setProducts((prev) => [...prev, data]);
-    return data;
+    try {
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(product),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to create product: ${response.statusText}`);
+      }
+      const data = await response.json();
+      setProducts((prev) => [...prev, data]);
+      setError(null);
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    }
   };
 
   const updateProduct = async (id: number, updates: UpdateProduct): Promise<Product> => {
-    const response = await fetch("/api/products", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...updates }),
-    });
-    if (!response.ok) throw new Error(`Failed to update product: ${response.statusText}`);
-    const data = await response.json();
-    setProducts((prev) => prev.map((p) => (p.id === id ? data : p)));
-    return data;
+    try {
+      const response = await fetch("/api/products", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to update product: ${response.statusText}`);
+      }
+      const data = await response.json();
+      setProducts((prev) => prev.map((p) => (p.id === id ? data : p)));
+      setError(null);
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    }
   };
 
   const deleteProduct = async (id: number): Promise<void> => {
-    const response = await fetch("/api/products", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (!response.ok) throw new Error(`Failed to delete product: ${response.statusText}`);
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    try {
+      const response = await fetch("/api/products", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to delete product: ${response.statusText}`);
+      }
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      setError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    }
   };
 
   useEffect(() => {

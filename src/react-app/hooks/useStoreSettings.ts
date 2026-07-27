@@ -32,15 +32,25 @@ export function useStoreSettings() {
   }, []);
 
   const updateSettings = async (updates: UpdateStoreSettings): Promise<StoreSettings> => {
-    const response = await fetch("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...settings, ...updates }),
-    });
-    if (!response.ok) throw new Error(`Failed to update settings: ${response.statusText}`);
-    const data = await response.json();
-    setSettings(data);
-    return data;
+    try {
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...settings, ...updates }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to update settings: ${response.statusText}`);
+      }
+      const data = await response.json();
+      setSettings(data);
+      setError(null);
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    }
   };
 
   useEffect(() => {
