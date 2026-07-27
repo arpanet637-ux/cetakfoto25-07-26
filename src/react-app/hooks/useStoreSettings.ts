@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/react-app/lib/supabase";
 import { useAuth } from "@/react-app/App";
 import type { StoreSettings, UpdateStoreSettings } from "@/shared/types";
 
@@ -13,16 +14,12 @@ export function useStoreSettings() {
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/settings").catch(() => null);
-      if (!response) {
-        setError("Database connection not available. Deploy to Vercel for full functionality.");
-        setSettings(null);
-        setLoading(false);
-        return;
-      }
-      if (!response.ok) throw new Error(`Failed to fetch settings: ${response.statusText}`);
-      const data = await response.json();
-      setSettings(data ?? null);
+      const { data, error: err } = await supabase
+        .from("store_settings")
+        .select("*")
+        .maybeSingle();
+      if (err) throw new Error(err.message);
+      setSettings(data);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -32,24 +29,25 @@ export function useStoreSettings() {
   }, []);
 
   const updateSettings = async (updates: UpdateStoreSettings): Promise<StoreSettings> => {
-    try {
-      const response = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...settings, ...updates }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to update settings: ${response.statusText}`);
-      }
-      const data = await response.json();
+    if (settings) {
+      const { data, error: err } = await supabase
+        .from("store_settings")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", settings.id)
+        .select()
+        .single();
+      if (err) throw new Error(err.message);
       setSettings(data);
-      setError(null);
       return data;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setError(message);
-      throw err;
+    } else {
+      const { data, error: err } = await supabase
+        .from("store_settings")
+        .insert({ name: updates.name ?? "Toko Saya", ...updates })
+        .select()
+        .single();
+      if (err) throw new Error(err.message);
+      setSettings(data);
+      return data;
     }
   };
 
